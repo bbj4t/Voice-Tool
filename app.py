@@ -14,6 +14,11 @@ import tempfile
 import requests
 import json
 
+# Check Gradio version for compatibility
+GRADIO_VERSION = tuple(map(int, gr.__version__.split(".")[:2]))
+IS_GRADIO_4 = GRADIO_VERSION[0] == 4
+print(f"📦 Gradio version: {gr.__version__} (v{GRADIO_VERSION[0]} mode)")
+
 # Add modules to path
 sys.path.insert(0, str(Path(__file__).parent / "core"))
 sys.path.insert(0, str(Path(__file__).parent / "claude-bridge"))
@@ -373,15 +378,16 @@ with demo:
             
             with gr.Row():
                 with gr.Column(scale=1):
+                    # Gradio 4.x uses 'sources' parameter, Gradio 6.x also supports it
                     voice_input = gr.Audio(
-                        sources=["microphone"],
+                        sources=["microphone"] if not IS_GRADIO_4 else ["microphone"],
                         type="numpy",
                         label="🎙️ Click to Record"
                     )
                     voice_submit = gr.Button("🚀 Send to Claude", variant="primary")
                 
                 with gr.Column(scale=1):
-                    voice_output = gr.Audio(label="🔊 Claude's Response", type="filepath")
+                    voice_output = gr.Audio(label="🔊 Claude's Response")
                     voice_log = gr.Markdown(label="Conversation")
                     voice_text = gr.Textbox(label="Response Text", lines=3, interactive=False)
             
@@ -407,8 +413,7 @@ with demo:
                 with gr.Column():
                     stt_output = gr.Textbox(
                         label="Transcription",
-                        lines=8,
-                        placeholder="Transcribed text appears here..."
+                        lines=8
                     )
             
             stt_btn.click(transcribe_audio, inputs=[stt_input], outputs=[stt_output])
@@ -421,13 +426,12 @@ with demo:
                 with gr.Column():
                     tts_input = gr.Textbox(
                         label="Text to Speak",
-                        lines=5,
-                        placeholder="Enter text to synthesize..."
+                        lines=5
                     )
                     tts_btn = gr.Button("🔊 Generate Speech", variant="primary")
                 
                 with gr.Column():
-                    tts_output = gr.Audio(label="Generated Audio", type="filepath")
+                    tts_output = gr.Audio(label="Generated Audio")
                     tts_status = gr.Textbox(label="Status", interactive=False)
             
             tts_btn.click(synthesize_text, inputs=[tts_input], outputs=[tts_output, tts_status])
@@ -436,11 +440,10 @@ with demo:
         with gr.Tab("💬 Text Chat"):
             gr.Markdown("### Chat with Claude via text")
             
-            chatbot = gr.Chatbot(height=450)
+            chatbot = gr.Chatbot(height=400)
             
             with gr.Row():
                 chat_input = gr.Textbox(
-                    placeholder="Type your message...",
                     label="Message",
                     scale=4
                 )
