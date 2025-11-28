@@ -1,0 +1,55 @@
+# Voice Development Wrapper Configuration
+# Personal development tool settings
+
+# API Keys and Services
+apis:
+  openai_key: ""  # For Whisper STT and TTS
+  anthropic_key: ""  # For Claude API integration
+  huggingface_token: ""  # For Hugging Face model access
+
+# Speech-to-Text Configuration
+stt:
+  provider: "whisper"  # Options: whisper, browser, deepgram
+  model: "base"  # whisper models: tiny, base, small, medium, large
+  language: "en"
+  sample_rate: 16000
+  chunk_duration_ms: 1000
+
+# Text-to-Speech Configuration
+tts:
+  provider: "openai"  # Options: openai, elevenlabs, coqui, browser
+  voice: "nova"  # OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
+  speed: 1.0
+  model: "tts-1"
+
+# Claude Integration
+claude:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  temperature: 1.0
+  stream: true
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8765
+  websocket_port: 8766
+  cors_enabled: true
+
+# VS Code Extension
+vscode:
+  voice_activation_key: "ctrl+shift+v"
+  auto_dictation: false
+  show_transcription: true
+
+# Performance
+performance:
+  cache_enabled: true
+  max_cache_size_mb: 500
+  parallel_processing: true
+
+# Development
+dev:
+  debug_mode: false
+  log_level: "INFO"
+  save_audio_files: false

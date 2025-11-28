@@ -1,0 +1,93 @@
+{
+  "name": "voice-dev-assistant",
+  "displayName": "Voice Development Assistant",
+  "description": "Voice-enabled coding with TTS/STT and Claude integration",
+  "version": "0.1.0",
+  "publisher": "personal",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:voice-dev.startListening",
+    "onCommand:voice-dev.stopListening",
+    "onCommand:voice-dev.toggleVoice"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "voice-dev.startListening",
+        "title": "Voice Dev: Start Listening"
+      },
+      {
+        "command": "voice-dev.stopListening",
+        "title": "Voice Dev: Stop Listening"
+      },
+      {
+        "command": "voice-dev.toggleVoice",
+        "title": "Voice Dev: Toggle Voice Mode"
+      },
+      {
+        "command": "voice-dev.askClaude",
+        "title": "Voice Dev: Ask Claude"
+      },
+      {
+        "command": "voice-dev.dictateCode",
+        "title": "Voice Dev: Dictate Code"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "voice-dev.toggleVoice",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v"
+      },
+      {
+        "command": "voice-dev.askClaude",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c"
+      }
+    ],
+    "configuration": {
+      "title": "Voice Development Assistant",
+      "properties": {
+        "voiceDev.serverUrl": {
+          "type": "string",
+          "default": "ws://localhost:8766",
+          "description": "WebSocket server URL for voice service"
+        },
+        "voiceDev.autoTranscribe": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically insert transcribed text"
+        },
+        "voiceDev.showTranscription": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show transcription in status bar"
+        },
+        "voiceDev.voiceActivationKey": {
+          "type": "string",
+          "default": "ctrl+shift+v",
+          "description": "Keyboard shortcut for voice activation"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.50.0"
+  },
+  "dependencies": {
+    "ws": "^8.14.0"
+  }
+}
