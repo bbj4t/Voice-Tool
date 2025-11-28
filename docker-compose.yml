@@ -1,0 +1,57 @@
+# Docker Compose for Voice Development Wrapper
+# Local development stack with all services
+
+version: '3.8'
+
+services:
+  # Main Gradio Web Interface
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voice-dev-web
+    ports:
+      - "7860:7860"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+    volumes:
+      - ./config:/app/config:ro
+      - whisper-cache:/home/appuser/.cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Bridge Server (WebSocket + HTTP API)
+  bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voice-dev-bridge
+    command: python claude-bridge/bridge_server.py
+    ports:
+      - "8765:8765"   # HTTP API
+      - "8766:8766"   # WebSocket
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./config:/app/config:ro
+      - whisper-cache:/home/appuser/.cache
+    restart: unless-stopped
+    depends_on:
+      - web
+
+volumes:
+  whisper-cache:
+    driver: local
+
+networks:
+  default:
+    name: voice-dev-network

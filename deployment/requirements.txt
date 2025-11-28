@@ -1,5 +1,5 @@
 # Voice Development Wrapper - Requirements
-# Hugging Face Spaces Entry Point
+# Optimized for Hugging Face Spaces with ZeroGPU
 
 # Core dependencies
 anthropic>=0.18.0
@@ -13,7 +13,7 @@ torch>=2.0.0
 torchaudio>=2.0.0
 
 # Web services - Gradio UI
-gradio>=4.44.0
+gradio>=4.19.0
 aiohttp>=3.9.0
 websockets>=12.0
 
@@ -21,8 +21,14 @@ websockets>=12.0
 python-multipart>=0.0.6
 python-dotenv>=1.0.0
 
+# Hugging Face Spaces ZeroGPU support
+spaces>=0.19.0
+
 # Audio processing
 soundfile>=0.12.0
+librosa>=0.10.0
 
-# Hugging Face Spaces ZeroGPU support (auto-installed on Spaces)
-# spaces>=0.19.0
+# Optional providers (uncomment as needed)
+# elevenlabs>=0.2.0      # Premium TTS
+# TTS>=0.22.0            # Coqui TTS (open-source)
+# deepgram-sdk>=3.0.0    # Real-time STT
