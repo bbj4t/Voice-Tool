@@ -59,8 +59,8 @@ Voice-Tool/
 1. Fork this repository to your HuggingFace account
 2. Create a new Space with Gradio SDK
 3. Set secrets:
-   - `ANTHROPIC_API_KEY`: Your Anthropic API key
-   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `OPENROUTER_API_KEY`: Your OpenRouter API key (for LLM)
+   - `OPENAI_API_KEY`: Your OpenAI API key (for TTS, optional)
 4. Push and deploy!
 
 ### Option 2: Docker
@@ -91,8 +91,8 @@ source venv/bin/activate  # or `venv\Scripts\activate` on Windows
 pip install -r deployment/requirements.txt
 
 # Set environment variables
-export ANTHROPIC_API_KEY="your_key"
-export OPENAI_API_KEY="your_key"
+export OPENROUTER_API_KEY="your_key"
+export OPENAI_API_KEY="your_key"  # Optional, for TTS
 
 # Run the app
 python app.py
@@ -104,8 +104,18 @@ python app.py
 
 | Key | Required For | Get It From |
 |-----|--------------|-------------|
-| `ANTHROPIC_API_KEY` | Claude conversations | [console.anthropic.com](https://console.anthropic.com/) |
-| `OPENAI_API_KEY` | Whisper STT & TTS | [platform.openai.com](https://platform.openai.com/) |
+| `OPENROUTER_API_KEY` | LLM (Claude, GPT-4, etc.) | [openrouter.ai](https://openrouter.ai/) |
+| `OPENAI_API_KEY` | TTS (Text-to-Speech) | [platform.openai.com](https://platform.openai.com/) |
+
+### Supported Models via OpenRouter
+
+- `anthropic/claude-sonnet-4-20250514` (Claude Sonnet 4)
+- `anthropic/claude-3.5-sonnet` (Claude 3.5 Sonnet)
+- `openai/gpt-4o` (GPT-4o)
+- `openai/gpt-4o-mini` (GPT-4o Mini - cheaper)
+- `google/gemini-pro-1.5` (Gemini Pro)
+- `meta-llama/llama-3.1-70b-instruct` (Llama 3.1)
+- And many more at [openrouter.ai/models](https://openrouter.ai/models)
 
 ### Optional Configuration
 

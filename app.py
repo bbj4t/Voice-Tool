@@ -2,6 +2,7 @@
 """
 Voice Development Wrapper - Hugging Face Spaces Entry Point
 Optimized for ZeroGPU H200 cluster
+Uses OpenRouter for LLM and TTS access
 """
 
 import gradio as gr
@@ -10,6 +11,8 @@ import sys
 import os
 from pathlib import Path
 import tempfile
+import requests
+import json
 
 # Add modules to path
 sys.path.insert(0, str(Path(__file__).parent / "core"))
@@ -36,19 +39,22 @@ def load_config():
     else:
         # Default configuration
         config = {
-            'apis': {'openai_key': '', 'anthropic_key': ''},
+            'apis': {'openrouter_key': '', 'openai_key': ''},
             'stt': {'provider': 'whisper', 'model': 'base', 'language': 'en', 'sample_rate': 16000},
             'tts': {'provider': 'openai', 'voice': 'nova', 'speed': 1.0, 'model': 'tts-1'},
-            'claude': {'model': 'claude-sonnet-4-20250514', 'max_tokens': 4096, 'temperature': 1.0, 'stream': True}
+            'llm': {'model': 'anthropic/claude-sonnet-4-20250514', 'max_tokens': 4096, 'temperature': 1.0}
         }
     
     # Override with environment variables
+    config['apis']['openrouter_key'] = os.getenv('OPENROUTER_API_KEY', config['apis'].get('openrouter_key', ''))
     config['apis']['openai_key'] = os.getenv('OPENAI_API_KEY', config['apis'].get('openai_key', ''))
-    config['apis']['anthropic_key'] = os.getenv('ANTHROPIC_API_KEY', config['apis'].get('anthropic_key', ''))
     
     return config
 
 config = load_config()
+
+# OpenRouter API base URL
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Initialize Whisper model (lazy loading for ZeroGPU)
 whisper_model = None
@@ -73,44 +79,62 @@ def get_whisper_model():
             raise
     return whisper_model
 
-# TTS Client (lazy loading)
+# TTS Client (lazy loading) - uses OpenAI for TTS
 openai_client = None
 
 def get_openai_client():
-    """Get OpenAI client for TTS"""
+    """Get OpenAI client for TTS (OpenRouter doesn't support TTS yet)"""
     global openai_client
     if openai_client is None:
         try:
             from openai import OpenAI
             api_key = config['apis']['openai_key']
             if not api_key:
-                raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY environment variable.")
+                raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY for TTS.")
             openai_client = OpenAI(api_key=api_key)
-            print("✅ OpenAI client initialized")
+            print("✅ OpenAI TTS client initialized")
         except Exception as e:
-            print(f"❌ Error initializing OpenAI: {e}")
+            print(f"❌ Error initializing OpenAI TTS: {e}")
             raise
     return openai_client
 
-# Claude Client (lazy loading)
-claude_client = None
+# Conversation history
 conversation_history = []
 
-def get_claude_client():
-    """Get Claude client"""
-    global claude_client
-    if claude_client is None:
-        try:
-            from anthropic import Anthropic
-            api_key = config['apis']['anthropic_key']
-            if not api_key:
-                raise ValueError("Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable.")
-            claude_client = Anthropic(api_key=api_key)
-            print("✅ Claude client initialized")
-        except Exception as e:
-            print(f"❌ Error initializing Claude: {e}")
-            raise
-    return claude_client
+def chat_with_openrouter(messages: list, model: str = None) -> str:
+    """Send chat request to OpenRouter API"""
+    api_key = config['apis']['openrouter_key']
+    if not api_key:
+        raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable.")
+    
+    model = model or config.get('llm', {}).get('model', 'anthropic/claude-sonnet-4-20250514')
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://huggingface.co/spaces",  # Required by OpenRouter
+        "X-Title": "Voice Development Assistant"
+    }
+    
+    payload = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": config.get('llm', {}).get('max_tokens', 4096),
+        "temperature": config.get('llm', {}).get('temperature', 1.0)
+    }
+    
+    response = requests.post(
+        f"{OPENROUTER_BASE_URL}/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=120
+    )
+    
+    if response.status_code != 200:
+        raise Exception(f"OpenRouter API error: {response.status_code} - {response.text}")
+    
+    result = response.json()
+    return result['choices'][0]['message']['content']
 
 
 # Define GPU-accelerated transcription function
@@ -191,14 +215,12 @@ def synthesize_text(text, voice="nova"):
 
 
 def chat_with_claude(message, history):
-    """Chat with Claude"""
+    """Chat with LLM via OpenRouter"""
     global conversation_history
     
     try:
         if not message.strip():
             return history
-        
-        client = get_claude_client()
         
         # Build messages
         conversation_history.append({
@@ -206,13 +228,8 @@ def chat_with_claude(message, history):
             "content": message
         })
         
-        response = client.messages.create(
-            model=config['claude'].get('model', 'claude-sonnet-4-20250514'),
-            max_tokens=config['claude'].get('max_tokens', 4096),
-            messages=conversation_history
-        )
-        
-        assistant_message = response.content[0].text
+        # Call OpenRouter
+        assistant_message = chat_with_openrouter(conversation_history)
         
         conversation_history.append({
             "role": "assistant",
@@ -228,7 +245,7 @@ def chat_with_claude(message, history):
 
 
 def voice_chat(audio):
-    """Complete voice conversation with Claude"""
+    """Complete voice conversation with LLM via OpenRouter"""
     try:
         if audio is None:
             return None, "No audio provided", ""
@@ -240,25 +257,19 @@ def voice_chat(audio):
         if not user_text:
             return None, "No speech detected", ""
         
-        # Get Claude's response
-        client = get_claude_client()
+        # Get LLM response via OpenRouter
         global conversation_history
         
         conversation_history.append({"role": "user", "content": user_text})
         
-        response = client.messages.create(
-            model=config['claude'].get('model', 'claude-sonnet-4-20250514'),
-            max_tokens=config['claude'].get('max_tokens', 4096),
-            messages=conversation_history
-        )
+        response_text = chat_with_openrouter(conversation_history)
         
-        response_text = response.content[0].text
         conversation_history.append({"role": "assistant", "content": response_text})
         
         # Synthesize response
         audio_path, _ = synthesize_text(response_text)
         
-        conversation_log = f"**🎤 You:** {user_text}\n\n**🤖 Claude:** {response_text}"
+        conversation_log = f"**🎤 You:** {user_text}\n\n**🤖 Assistant:** {response_text}"
         
         return audio_path, conversation_log, response_text
     
@@ -276,18 +287,19 @@ def clear_history():
 # Check API keys status
 def check_api_status():
     """Check if API keys are configured"""
+    openrouter_ok = bool(config['apis'].get('openrouter_key'))
     openai_ok = bool(config['apis'].get('openai_key'))
-    anthropic_ok = bool(config['apis'].get('anthropic_key'))
     
     status = []
-    if openai_ok:
-        status.append("✅ OpenAI API key configured")
+    if openrouter_ok:
+        status.append("✅ OpenRouter API key configured (LLM)")
     else:
-        status.append("❌ OpenAI API key missing (Set OPENAI_API_KEY)")
+        status.append("❌ OpenRouter API key missing (Set OPENROUTER_API_KEY)")
     
-    if anthropic_ok:
-        status.append("✅ Anthropic API key configured")
+    if openai_ok:
+        status.append("✅ OpenAI API key configured (TTS)")
     else:
+        status.append("⚠️ OpenAI API key missing - TTS disabled (Set OPENAI_API_KEY)")
         status.append("❌ Anthropic API key missing (Set ANTHROPIC_API_KEY)")
     
     if ZERO_GPU_AVAILABLE:

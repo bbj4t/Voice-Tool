@@ -3,8 +3,8 @@
 
 # API Keys and Services
 apis:
-  openai_key: ""  # For Whisper STT and TTS
-  anthropic_key: ""  # For Claude API integration
+  openrouter_key: ""  # For LLM access via OpenRouter
+  openai_key: ""  # For TTS (optional)
   huggingface_token: ""  # For Hugging Face model access
 
 # Speech-to-Text Configuration
@@ -22,12 +22,19 @@ tts:
   speed: 1.0
   model: "tts-1"
 
-# Claude Integration
-claude:
-  model: "claude-sonnet-4-20250514"
+# LLM Configuration (via OpenRouter)
+llm:
+  # Popular models available on OpenRouter:
+  # - anthropic/claude-sonnet-4-20250514 (Claude Sonnet 4)
+  # - anthropic/claude-3.5-sonnet (Claude 3.5 Sonnet)
+  # - openai/gpt-4o (GPT-4o)
+  # - openai/gpt-4o-mini (GPT-4o Mini - cheaper)
+  # - google/gemini-pro-1.5 (Gemini Pro)
+  # - meta-llama/llama-3.1-70b-instruct (Llama 3.1 70B)
+  # - mistralai/mistral-large (Mistral Large)
+  model: "anthropic/claude-sonnet-4-20250514"
   max_tokens: 4096
   temperature: 1.0
-  stream: true
 
 # Server Configuration
 server:
