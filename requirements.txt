@@ -18,7 +18,7 @@ sentencepiece>=0.1.99
 scipy>=1.10.0
 
 # Web services - Gradio UI
-gradio>=4.44.0
+gradio>=6.0.0
 
 # Audio processing
 soundfile>=0.12.0
