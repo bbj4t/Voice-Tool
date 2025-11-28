@@ -78,6 +78,7 @@ tmp/
 temp/
 *.tmp
 
+
 # Test files
 .coverage
 htmlcov/
@@ -85,3 +86,6 @@ htmlcov/
 # Build artifacts
 *.zip
 !files*.zip
+
+# HF Space (separate repo)
+hf-space/
