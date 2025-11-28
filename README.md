@@ -60,7 +60,6 @@ Voice-Tool/
 2. Create a new Space with Gradio SDK
 3. Set secrets:
    - `OPENROUTER_API_KEY`: Your OpenRouter API key (for LLM)
-   - `OPENAI_API_KEY`: Your OpenAI API key (for TTS, optional)
 4. Push and deploy!
 
 ### Option 2: Docker
@@ -92,7 +91,6 @@ pip install -r deployment/requirements.txt
 
 # Set environment variables
 export OPENROUTER_API_KEY="your_key"
-export OPENAI_API_KEY="your_key"  # Optional, for TTS
 
 # Run the app
 python app.py
@@ -105,9 +103,15 @@ python app.py
 | Key | Required For | Get It From |
 |-----|--------------|-------------|
 | `OPENROUTER_API_KEY` | LLM (Claude, GPT-4, etc.) | [openrouter.ai](https://openrouter.ai/) |
-| `OPENAI_API_KEY` | TTS (Text-to-Speech) | [platform.openai.com](https://platform.openai.com/) |
 
-### Supported Models via OpenRouter
+### Free Components (No API Key Needed!)
+
+| Component | Model |
+|-----------|-------|
+| **STT** | OpenAI Whisper (local) |
+| **TTS** | HuggingFace SpeechT5 |
+
+### Supported LLM Models via OpenRouter
 
 - `anthropic/claude-sonnet-4-20250514` (Claude Sonnet 4)
 - `anthropic/claude-3.5-sonnet` (Claude 3.5 Sonnet)

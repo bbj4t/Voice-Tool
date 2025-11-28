@@ -4,8 +4,7 @@
 # API Keys and Services
 apis:
   openrouter_key: ""  # For LLM access via OpenRouter
-  openai_key: ""  # For TTS (optional)
-  huggingface_token: ""  # For Hugging Face model access
+  huggingface_token: ""  # For Hugging Face model access (optional)
 
 # Speech-to-Text Configuration
 stt:
@@ -15,12 +14,10 @@ stt:
   sample_rate: 16000
   chunk_duration_ms: 1000
 
-# Text-to-Speech Configuration
+# Text-to-Speech Configuration (HuggingFace - free!)
 tts:
-  provider: "openai"  # Options: openai, elevenlabs, coqui, browser
-  voice: "nova"  # OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
-  speed: 1.0
-  model: "tts-1"
+  provider: "huggingface"
+  model: "microsoft/speecht5_tts"  # or facebook/mms-tts-eng
 
 # LLM Configuration (via OpenRouter)
 llm:

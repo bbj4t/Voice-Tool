@@ -39,15 +39,14 @@ def load_config():
     else:
         # Default configuration
         config = {
-            'apis': {'openrouter_key': '', 'openai_key': ''},
+            'apis': {'openrouter_key': ''},
             'stt': {'provider': 'whisper', 'model': 'base', 'language': 'en', 'sample_rate': 16000},
-            'tts': {'provider': 'openai', 'voice': 'nova', 'speed': 1.0, 'model': 'tts-1'},
+            'tts': {'provider': 'huggingface', 'model': 'microsoft/speecht5_tts'},
             'llm': {'model': 'anthropic/claude-sonnet-4-20250514', 'max_tokens': 4096, 'temperature': 1.0}
         }
     
     # Override with environment variables
     config['apis']['openrouter_key'] = os.getenv('OPENROUTER_API_KEY', config['apis'].get('openrouter_key', ''))
-    config['apis']['openai_key'] = os.getenv('OPENAI_API_KEY', config['apis'].get('openai_key', ''))
     
     return config
 
@@ -79,24 +78,51 @@ def get_whisper_model():
             raise
     return whisper_model
 
-# TTS Client (lazy loading) - uses OpenAI for TTS
-openai_client = None
+# TTS Model (lazy loading) - uses HuggingFace models
+tts_pipeline = None
+tts_processor = None
+tts_model = None
 
-def get_openai_client():
-    """Get OpenAI client for TTS (OpenRouter doesn't support TTS yet)"""
-    global openai_client
-    if openai_client is None:
+def get_tts_pipeline():
+    """Get HuggingFace TTS pipeline"""
+    global tts_pipeline, tts_processor, tts_model
+    if tts_pipeline is None:
         try:
-            from openai import OpenAI
-            api_key = config['apis']['openai_key']
-            if not api_key:
-                raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY for TTS.")
-            openai_client = OpenAI(api_key=api_key)
-            print("✅ OpenAI TTS client initialized")
+            import torch
+            from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
+            from datasets import load_dataset
+            
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"Loading TTS models on {device}...")
+            
+            # Load SpeechT5 models
+            tts_processor = SpeechT5Processor.from_pretrained("microsoft/speecht5_tts")
+            tts_model = SpeechT5ForTextToSpeech.from_pretrained("microsoft/speecht5_tts").to(device)
+            vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan").to(device)
+            
+            # Load speaker embeddings
+            embeddings_dataset = load_dataset("Matthijs/cmu-arctic-xvectors", split="validation")
+            speaker_embeddings = torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0).to(device)
+            
+            tts_pipeline = {
+                "processor": tts_processor,
+                "model": tts_model,
+                "vocoder": vocoder,
+                "speaker_embeddings": speaker_embeddings,
+                "device": device
+            }
+            print("✅ HuggingFace TTS initialized (SpeechT5)")
         except Exception as e:
-            print(f"❌ Error initializing OpenAI TTS: {e}")
-            raise
-    return openai_client
+            print(f"⚠️ SpeechT5 failed, trying alternative: {e}")
+            try:
+                # Fallback to a simpler TTS
+                from transformers import pipeline
+                tts_pipeline = pipeline("text-to-speech", model="facebook/mms-tts-eng")
+                print("✅ HuggingFace TTS initialized (MMS-TTS)")
+            except Exception as e2:
+                print(f"❌ Error initializing TTS: {e2}")
+                tts_pipeline = None
+    return tts_pipeline
 
 # Conversation history
 conversation_history = []
@@ -188,27 +214,43 @@ def transcribe_audio(audio):
         return f"Error transcribing audio: {str(e)}"
 
 
-def synthesize_text(text, voice="nova"):
-    """Synthesize text to speech using OpenAI TTS"""
+def synthesize_text(text, voice="default"):
+    """Synthesize text to speech using HuggingFace TTS"""
     try:
         if not text:
             return None, "No text provided"
         
-        client = get_openai_client()
+        import torch
+        import scipy.io.wavfile as wavfile
         
-        response = client.audio.speech.create(
-            model=config['tts'].get('model', 'tts-1'),
-            voice=voice,
-            input=text,
-            speed=config['tts'].get('speed', 1.0)
-        )
+        tts = get_tts_pipeline()
+        if tts is None:
+            return None, "TTS not available"
+        
+        # Check if it's a transformers pipeline or our custom dict
+        if isinstance(tts, dict):
+            # SpeechT5 model
+            inputs = tts["processor"](text=text, return_tensors="pt").to(tts["device"])
+            with torch.no_grad():
+                speech = tts["model"].generate_speech(
+                    inputs["input_ids"], 
+                    tts["speaker_embeddings"], 
+                    vocoder=tts["vocoder"]
+                )
+            audio_data = speech.cpu().numpy()
+            sample_rate = 16000
+        else:
+            # MMS-TTS pipeline
+            result = tts(text)
+            audio_data = result["audio"][0]
+            sample_rate = result["sampling_rate"]
         
         # Save to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp:
-            tmp.write(response.content)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
+            wavfile.write(tmp.name, sample_rate, audio_data)
             tmp_path = tmp.name
         
-        return tmp_path, f"✅ Synthesized {len(text)} characters with voice '{voice}'"
+        return tmp_path, f"✅ Synthesized {len(text)} characters"
     
     except Exception as e:
         return None, f"Error synthesizing: {str(e)}"
@@ -288,7 +330,6 @@ def clear_history():
 def check_api_status():
     """Check if API keys are configured"""
     openrouter_ok = bool(config['apis'].get('openrouter_key'))
-    openai_ok = bool(config['apis'].get('openai_key'))
     
     status = []
     if openrouter_ok:
@@ -296,11 +337,7 @@ def check_api_status():
     else:
         status.append("❌ OpenRouter API key missing (Set OPENROUTER_API_KEY)")
     
-    if openai_ok:
-        status.append("✅ OpenAI API key configured (TTS)")
-    else:
-        status.append("⚠️ OpenAI API key missing - TTS disabled (Set OPENAI_API_KEY)")
-        status.append("❌ Anthropic API key missing (Set ANTHROPIC_API_KEY)")
+    status.append("✅ HuggingFace TTS (free, no API key needed)")
     
     if ZERO_GPU_AVAILABLE:
         status.append("🚀 ZeroGPU enabled (H200 acceleration)")
@@ -378,7 +415,7 @@ with demo:
         
         # TTS Tab
         with gr.Tab("🔊 Speak"):
-            gr.Markdown("### Convert text to natural speech")
+            gr.Markdown("### Convert text to natural speech (HuggingFace TTS)")
             
             with gr.Row():
                 with gr.Column():
@@ -387,18 +424,13 @@ with demo:
                         lines=5,
                         placeholder="Enter text to synthesize..."
                     )
-                    tts_voice = gr.Dropdown(
-                        choices=["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
-                        value="nova",
-                        label="🎭 Voice"
-                    )
                     tts_btn = gr.Button("🔊 Generate Speech", variant="primary")
                 
                 with gr.Column():
                     tts_output = gr.Audio(label="Generated Audio", type="filepath")
                     tts_status = gr.Textbox(label="Status", interactive=False)
             
-            tts_btn.click(synthesize_text, inputs=[tts_input, tts_voice], outputs=[tts_output, tts_status])
+            tts_btn.click(synthesize_text, inputs=[tts_input], outputs=[tts_output, tts_status])
         
         # Text Chat Tab
         with gr.Tab("💬 Text Chat"):
