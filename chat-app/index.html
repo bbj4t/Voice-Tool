@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src http://localhost:* ws://localhost:*; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+  <title>Voice Chat</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🎤 Voice Chat</h1>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Provider</h3>
+        <select id="provider-select">
+          <option value="openrouter">OpenRouter</option>
+          <option value="ollama">Ollama (Local)</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="groq">Groq</option>
+        </select>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Model</h3>
+        <select id="model-select">
+          <option value="loading">Loading...</option>
+        </select>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Voice Settings</h3>
+        <label>
+          Exaggeration
+          <input type="range" id="tts-exaggeration" min="0.25" max="2" step="0.05" value="0.5">
+          <span id="exaggeration-value">0.5</span>
+        </label>
+        <label>
+          Temperature
+          <input type="range" id="tts-temperature" min="0.1" max="2" step="0.1" value="0.8">
+          <span id="temperature-value">0.8</span>
+        </label>
+        <label>
+          Pace (CFG)
+          <input type="range" id="tts-cfg" min="0" max="1" step="0.05" value="0.5">
+          <span id="cfg-value">0.5</span>
+        </label>
+      </div>
+      
+      <div class="sidebar-section">
+        <h3>Connection</h3>
+        <div class="status-indicator" id="connection-status">
+          <span class="status-dot disconnected"></span>
+          <span>Disconnected</span>
+        </div>
+        <input type="text" id="server-url" value="http://localhost:8765" placeholder="Voice Service URL">
+        <button id="connect-btn" class="btn-secondary">Connect</button>
+      </div>
+      
+      <div class="sidebar-footer">
+        <button id="clear-chat" class="btn-danger">Clear Chat</button>
+        <button id="settings-btn" class="btn-secondary">⚙️ Settings</button>
+      </div>
+    </aside>
+    
+    <!-- Main Chat Area -->
+    <main class="chat-container">
+      <div class="chat-messages" id="chat-messages">
+        <div class="welcome-message">
+          <h2>👋 Welcome to Voice Chat</h2>
+          <p>Click the microphone button or type a message to start chatting.</p>
+          <p class="hint">Make sure the Voice Service is running on port 8765.</p>
+        </div>
+      </div>
+      
+      <div class="chat-input-container">
+        <div class="input-wrapper">
+          <textarea id="text-input" placeholder="Type a message..." rows="1"></textarea>
+          <button id="send-btn" class="btn-primary" title="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <button id="mic-btn" class="mic-button" title="Hold to speak">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Settings</h2>
+      <div class="settings-group">
+        <h3>API Keys</h3>
+        <label>
+          OpenRouter API Key
+          <input type="password" id="openrouter-key" placeholder="sk-or-...">
+        </label>
+        <label>
+          OpenAI API Key
+          <input type="password" id="openai-key" placeholder="sk-...">
+        </label>
+        <label>
+          Anthropic API Key
+          <input type="password" id="anthropic-key" placeholder="sk-ant-...">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button id="save-settings" class="btn-primary">Save</button>
+        <button id="close-settings" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="renderer.js"></script>
+</body>
+</html>
